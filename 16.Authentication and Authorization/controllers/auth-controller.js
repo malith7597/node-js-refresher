@@ -1,16 +1,7 @@
 const User = require("../models/user-model");
 const bcrypt = require("bcryptjs");
-
-/* try {
-    const book = new BookDB({
-      title: req.body.title,
-      year: req.body.year
-    });
-    const newBook = await book.save();
-    res.status(201).json(newBook);
-  } catch (error) {
-    console.error(error);
-  } */
+const jwt = require("jsonwebtoken");
+const SECRET_KEY = process.env.SECRET_KEY;
 
 const registerASingleUser = async (req, res) => {
   try {
@@ -34,4 +25,33 @@ const registerASingleUser = async (req, res) => {
   }
 };
 
-module.exports = { registerASingleUser };
+const loginUser = async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    // Find the user in the database
+    const user = await User.findOne({ username: username });
+
+    if (!user) {
+      return res.status(401).json({ message: "Invalid username or password" });
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: "Invalid username or password" });
+    }
+    const token = jwt.sign(
+      { username: user.username, role: user.role },
+      SECRET_KEY,
+      { expiresIn: "1h" }
+    );
+
+    res.json({ message: "Login successful", token });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+module.exports = { registerASingleUser, loginUser };
